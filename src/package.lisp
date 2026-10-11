@@ -5,6 +5,9 @@
 (defpackage :cl-schema
   (:use :cl :iterate)
   (:export #:define-schema
+           #:define-accessors
+           #:list-schemas
+           #:dump-schemas
            #:find-schema
            #:validate
            #:valid-p

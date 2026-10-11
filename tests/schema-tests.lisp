@@ -134,3 +134,28 @@
              (declare (ignore normal))
              (is (= 1 (length errors)))))
       (ignore-errors (delete-file tmp)))))
+
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (cl-schema:define-schema :test-accessors
+    '(:object :keys ((:host :string) (:port :integer)))))
+
+(cl-schema:define-accessors test-acc- :test-accessors)
+
+(test define-accessors
+  (is (string= "example.com" (test-acc-host '(:host "example.com"))))
+  (is (= 53 (test-acc-port '(:host "example.com" :port 53))))
+  (is (null (test-acc-port '(:host "example.com")))))
+
+(test dump-schemas-roundtrip
+  (let ((tmp #p"/tmp/cl-schema-dump.sexp"))
+    (unwind-protect
+         (progn
+           (cl-schema:dump-schemas tmp)
+           (let ((names nil))
+             (with-open-file (s tmp :direction :input)
+               (iter (for form = (read s nil nil))
+                 (while form)
+                 (when (and (listp form) (eq :schema (first form)))
+                   (push (second form) names))))
+             (is (member :test-accessors names))))
+      (ignore-errors (delete-file tmp)))))

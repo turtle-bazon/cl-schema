@@ -44,6 +44,27 @@
   "Spec registered under NAME, or NIL."
   (gethash name *schemas*))
 
+(defmacro define-accessors (prefix schema-name &key (package *package*))
+  "Define PREFIX-KEY reader functions for every key of the :object
+schema SCHEMA-NAME (a plain GETF each; defaults and merging stay
+hand-written). The schema must exist at macroexpansion time — wrap
+its DEFINE-SCHEMA in (eval-when (:compile-toplevel :load-toplevel
+:execute) ...)."
+  (let ((spec (find-schema schema-name)))
+    (unless spec
+      (error "cl-schema: unknown schema ~s (define it in eval-when)" schema-name))
+    (unless (and (listp spec) (eq :object (first spec)))
+      (error "cl-schema: accessors need an :object schema, got ~s" schema-name))
+    `(progn
+       ,@(iter (for key-spec in (getf (rest spec) :keys))
+           (for key = (first key-spec))
+           (for fname = (intern (format nil "~a~a" prefix (string key))
+                                package))
+           (collect `(defun ,fname (object)
+                       ,(format nil "Reader for ~s in ~s (generated)."
+                                key schema-name)
+                       (getf object ,key)))))))
+
 (defun normalize-path (path)
   "PATH as a segment list: NIL stays NIL, lists pass through,
 anything else (e.g. a string) becomes a single segment."
@@ -316,6 +337,24 @@ where entry is nil, one (key . value), or one (key . values) pair."
         (error 'schema-error :path (format-path (list path))
                              :message (format nil "~{~a~^; ~}" errors))
         normal)))
+
+(defun list-schemas ()
+  "Sorted schema names in the registry."
+  (let ((out nil))
+    (maphash (lambda (k v) (declare (ignore v)) (push k out))
+             *schemas*)
+    (sort out (function string<) :key (function string))))
+
+(defun dump-schemas (path)
+  "Write the registry to PATH as readable data: a plist of
+\(:schema NAME SPEC) entries. External generators consume this
+instead of parsing Lisp source; specs are quoted data, except
+:satisfies predicates, which dump as opaque symbols."
+  (with-open-file (s path :direction :output :if-exists :supersede)
+    (iter (for name in (list-schemas))
+      (write (list :schema name (find-schema name)) :stream s)
+      (terpri s)))
+  path)
 
 (defun validate-file (schema file)
   "Read FILE with *READ-EVAL* NIL and validate the top-level form

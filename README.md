@@ -24,6 +24,13 @@ would otherwise write hand-rolled type and arity checks.
 - Custom predicates: `(:satisfies fn description)`.
 - Named registry: `define-schema` / `find-schema` so you can register
   schemas once and refer to them by keyword (may be recursive).
+- Code generation from data: `define-accessors` emits `PREFIX-KEY`
+  reader functions for an `:object` schema (schemas must exist at
+  macroexpansion time — wrap `define-schema` in `eval-when`), and
+  `dump-schemas` exports the whole registry as readable
+  `(:schema NAME SPEC)` data for external generators (which only need
+  an s-expression reader; `:satisfies` predicates stay opaque
+  symbols).
 - Whole-file validation: `validate-file` reads a file with
   `*read-eval*` bound to NIL and validates the top-level form.
 - Two return conventions: `validate` returns `(values normalized errors)`
