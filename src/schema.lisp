@@ -44,13 +44,18 @@
   "Spec registered under NAME, or NIL."
   (gethash name *schemas*))
 
-(defmacro define-accessors (prefix schema-name &key (package *package*))
+(defmacro define-accessors (prefix schema-name &key (package *package*)
+                                                     (except nil))
   "Define PREFIX-KEY reader functions for every key of the :object
 schema SCHEMA-NAME (a plain GETF each; defaults and merging stay
-hand-written). The schema must exist at macroexpansion time — wrap
-its DEFINE-SCHEMA in (eval-when (:compile-toplevel :load-toplevel
-:execute) ...)."
-  (let ((spec (find-schema schema-name)))
+hand-written), skipping keys in EXCEPT (hand-written readers with
+custom defaults). The schema must exist at macroexpansion time —
+wrap its DEFINE-SCHEMA in (eval-when (:compile-toplevel
+:load-toplevel :execute) ...). EXCEPT is a literal key list."
+  (let ((spec (find-schema schema-name))
+        (except (if (and (consp except) (eq 'quote (first except)))
+                    (second except)
+                    except)))
     (unless spec
       (error "cl-schema: unknown schema ~s (define it in eval-when)" schema-name))
     (unless (and (listp spec) (eq :object (first spec)))
@@ -60,10 +65,11 @@ its DEFINE-SCHEMA in (eval-when (:compile-toplevel :load-toplevel
            (for key = (first key-spec))
            (for fname = (intern (format nil "~a~a" prefix (string key))
                                 package))
-           (collect `(defun ,fname (object)
-                       ,(format nil "Reader for ~s in ~s (generated)."
-                                key schema-name)
-                       (getf object ,key)))))))
+           (when (not (member key except))
+             (collect `(defun ,fname (object)
+                         ,(format nil "Reader for ~s in ~s (generated)."
+                                  key schema-name)
+                         (getf object ,key))))))))
 
 (defun normalize-path (path)
   "PATH as a segment list: NIL stays NIL, lists pass through,
