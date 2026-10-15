@@ -71,14 +71,14 @@ would otherwise write hand-rolled type and arity checks.
 
 ;; whole s-expression files, XSD-style
 (cl-schema:validate-file '(:object :keys ((:name :string :required t)))
-                         "/etc/cardamines/zones/example.sexp")
+                         "/etc/kubelek/zones/example.sexp")
 ```
 
 ## Running the tests
 
 ```sh
 make tests-schema   # fiveam suite, 35/35 checks
-make tests          # cl-schema-tests + cardamines-tests (uv + ev)
+make tests          # cl-schema-tests + kubelek-tests (uv + ev)
 make compliance     # dig-based compliance suite
 ```
 
